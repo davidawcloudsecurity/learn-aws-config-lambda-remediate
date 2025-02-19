@@ -1,5 +1,10 @@
 provider "aws" {
-  region = "us-west-2" # Change to your preferred region
+  region = var.region # Change to your preferred region
+}
+
+variable region {
+  type = string
+default = "us-west-2"
 }
 
 resource "aws_lambda_function" "sg_outbound_checker" {
