@@ -60,15 +60,14 @@ resource "aws_iam_role_policy" "lambda_policy" {
     ]
   })
 }
-
 resource "aws_cloudwatch_event_rule" "every_day" {
-  name                = "every-minute-trigger"
-  description         = "Fires every minute"
-  schedule_expression = "rate(1 minute)"
+  name                = "every-day-trigger"
+  description         = "Fires every day at 2 AM UTC"
+  schedule_expression = "cron(0 2 * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "check_sg_rule" {
-  rule      = aws_cloudwatch_event_rule.every_minute.name
+  rule      = aws_cloudwatch_event_rule.every_day.name
   target_id = "lambda-check-sg-rule"
   arn       = aws_lambda_function.sg_outbound_checker.arn
 }
