@@ -1,32 +1,33 @@
 import boto3
 import json
+import os
+from botocore.exceptions import ClientError
 
 def lambda_handler(event, context):
-    # Initialize S3 client
     s3_client = boto3.client('s3')
+    bucket_prefix = os.environ.get('BUCKET_PREFIX', '')  # Optional prefix filter
     
     try:
         # Get list of all buckets
         response = s3_client.list_buckets()
-        buckets = response['Buckets']
+        buckets = [b for b in response['Buckets'] if b['Name'].startswith(bucket_prefix)]
         
         # Store results
-        deleted_buckets = []
-        skipped_buckets = []
+        bucket_status = []
         
         for bucket in buckets:
             bucket_name = bucket['Name']
+            status = {
+                'bucket_name': bucket_name,
+                'public_access_status': 'Unknown'
+            }
             
-            # Check public access block configuration
             try:
                 public_access_config = s3_client.get_public_access_block(
                     Bucket=bucket_name
                 )
                 
-                # Get the configuration settings
                 config = public_access_config['PublicAccessBlockConfiguration']
-                
-                # Check if all public access is blocked
                 is_fully_private = (
                     config['BlockPublicAcls'] and
                     config['IgnorePublicAcls'] and
@@ -34,41 +35,34 @@ def lambda_handler(event, context):
                     config['RestrictPublicBuckets']
                 )
                 
-                if is_fully_private:
-                    # Delete the bucket if public access is fully blocked
-                    s3_client.delete_bucket(Bucket=bucket_name)
-                    deleted_buckets.append(bucket_name)
-                    print(f"Deleted bucket: {bucket_name}")
+                status['public_access_status'] = 'Fully Private' if is_fully_private else 'Partially Public'
+                status['details'] = {
+                    'BlockPublicAcls': config['BlockPublicAcls'],
+                    'IgnorePublicAcls': config['IgnorePublicAcls'],
+                    'BlockPublicPolicy': config['BlockPublicPolicy'],
+                    'RestrictPublicBuckets': config['RestrictPublicBuckets']
+                }
+                
+            except ClientError as e:
+                # Check the error code to identify NoSuchPublicAccessBlockConfiguration
+                if e.response['Error']['Code'] == 'NoSuchPublicAccessBlockConfiguration':
+                    status['public_access_status'] = 'No Public Access Block Configured'
                 else:
-                    skipped_buckets.append({
-                        'bucket': bucket_name,
-                        'reason': 'Public access not fully blocked'
-                    })
-                    print(f"Skipped bucket: {bucket_name} - Public access not fully blocked")
-                    
-            except s3_client.exceptions.NoSuchPublicAccessBlockConfiguration:
-                # Skip buckets with no public access block configuration
-                skipped_buckets.append({
-                    'bucket': bucket_name,
-                    'reason': 'No public access block configuration'
-                })
-                print(f"Skipped bucket: {bucket_name} - No public access block configuration")
+                    status['public_access_status'] = f'Error: {str(e)}'
                 
             except Exception as e:
-                skipped_buckets.append({
-                    'bucket': bucket_name,
-                    'reason': str(e)
-                })
-                print(f"Error processing {bucket_name}: {str(e)}")
+                status['public_access_status'] = f'Error: {str(e)}'
+                
+            bucket_status.append(status)
+            print(f"Processed bucket: {bucket_name} - {status['public_access_status']}")
         
         # Prepare response
         result = {
             'statusCode': 200,
             'body': json.dumps({
-                'deleted_buckets': deleted_buckets,
-                'skipped_buckets': skipped_buckets,
+                'buckets': bucket_status,
                 'total_processed': len(buckets)
-            })
+            }, indent=2)
         }
         
         return result
