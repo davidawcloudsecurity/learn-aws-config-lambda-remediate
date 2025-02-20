@@ -7,7 +7,7 @@ variable region {
 default = "us-west-2"
 }
 
-resource "aws_lambda_function" "sg_outbound_checker" {
+resource "aws_lambda_function" "sg_inbound_outbound_checker" {
   filename      = "lambda_function.zip" # You need to package your Python function into this zip file
   function_name = "sg-outbound-checker"
   role          = aws_iam_role.lambda_role.arn
@@ -71,13 +71,13 @@ resource "aws_cloudwatch_event_rule" "every_day" {
 resource "aws_cloudwatch_event_target" "check_sg_rule" {
   rule      = aws_cloudwatch_event_rule.every_day.name
   target_id = "lambda-check-sg-rule"
-  arn       = aws_lambda_function.sg_outbound_checker.arn
+  arn       = aws_lambda_function.sg_inbound_outbound_checker.arn
 }
 
 resource "aws_lambda_permission" "allow_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.sg_outbound_checker.function_name
+  function_name = aws_lambda_function.sg_inbound_outbound_checker.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.every_day.arn
 }
