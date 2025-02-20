@@ -52,6 +52,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "ec2:DescribeSecurityGroups",
           "ec2:RevokeSecurityGroupEgress",
           "ec2:RevokeSecurityGroupIngress",
+          "ec2:DescribeSecurityGroupRules"
         ]
         Effect   = "Allow"
         Resource = "*"
