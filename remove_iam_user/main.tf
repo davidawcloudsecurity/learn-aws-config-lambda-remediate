@@ -53,8 +53,8 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Action = [
           "iam:ListUsers",
           "iam:ListAccessKeys",
-#          "iam:DeleteAccessKey",
-#          "iam:DeleteUser"
+          "iam:DeleteAccessKey",
+          "iam:DeleteUser",
           "iam:ListMFADevices"
         ]
         Resource = "*"
