@@ -7,14 +7,20 @@ variable region {
 default = "us-west-2"
 }
 
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "lambda_function.py" # Matches your file name
+  output_path = "lambda_function.zip"
+}
+
 resource "aws_lambda_function" "sg_inbound_outbound_checker" {
-  filename      = "lambda_function.zip" # You need to package your Python function into this zip file
-  function_name = "sg-outbound-checker"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "lambda_function.lambda_handler"
-  runtime       = "python3.8"
-  timeout       = "60"
-  source_code_hash = filebase64sha256("lambda_function.zip")
+  filename         = "lambda_function.zip"
+  function_name    = "sg-inbound-outbound-checker"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.8"
+  timeout          = 60
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 }
 
 resource "aws_iam_role" "lambda_role" {
