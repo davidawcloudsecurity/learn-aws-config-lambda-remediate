@@ -53,8 +53,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Action = [
           "s3:ListAllMyBuckets",
           "s3:GetBucketPublicAccessBlock",
-#          "s3:DeleteBucket",
-#          "s3:DeleteObject",
+          "s3:PutPublicAccessBlock",
           "s3:ListBucket"
         ]
         Resource = "*"
