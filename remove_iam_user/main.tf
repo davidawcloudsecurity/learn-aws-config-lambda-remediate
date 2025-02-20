@@ -9,23 +9,23 @@ variable "region" {
 
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "lambda_function.py" # Make sure this matches your Python file name
+  source_file = "lambda_function.py"
   output_path = "lambda_function.zip"
 }
 
-resource "aws_lambda_function" "s3_public_access_checker" {
+resource "aws_lambda_function" "iam_user_cleanup" {
   filename         = "lambda_function.zip"
-  function_name    = "s3-public-access-checker"
+  function_name    = "iam-user-cleanup"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.9"  # Updated to a more recent Python version
-  timeout          = 300         # Increased timeout to 5 minutes for processing multiple buckets
-  memory_size      = 128         # Default memory size
+  runtime          = "python3.9"
+  timeout          = 300  # 5 minutes, as IAM operations might take time
+  memory_size      = 128
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 }
 
 resource "aws_iam_role" "lambda_role" {
-  name = "s3_checker_lambda_role"
+  name = "iam_user_cleanup_lambda_role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -42,7 +42,7 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_policy" {
-  name = "s3_checker_lambda_policy"
+  name = "iam_user_cleanup_policy"
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
@@ -51,11 +51,11 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow"
         Action = [
-          "s3:ListAllMyBuckets",
-          "s3:GetBucketPublicAccessBlock",
-#          "s3:DeleteBucket",
-#          "s3:DeleteObject",
-          "s3:ListBucket"
+          "iam:ListUsers",
+          "iam:ListAccessKeys",
+#          "iam:DeleteAccessKey",
+#          "iam:DeleteUser"
+          "iam:ListMFADevices"
         ]
         Resource = "*"
       },
@@ -73,21 +73,21 @@ resource "aws_iam_role_policy" "lambda_policy" {
 }
 
 resource "aws_cloudwatch_event_rule" "every_day" {
-  name                = "every-day-s3-check"
-  description         = "Runs S3 public access check every day at 2 AM UTC"
+  name                = "every-day-iam-cleanup"
+  description         = "Runs IAM user cleanup every day at 2 AM UTC"
   schedule_expression = "cron(0 2 * * ? *)"
 }
 
-resource "aws_cloudwatch_event_target" "check_s3_buckets" {
+resource "aws_cloudwatch_event_target" "cleanup_iam_users" {
   rule      = aws_cloudwatch_event_rule.every_day.name
-  target_id = "lambda-check-s3-buckets"
-  arn       = aws_lambda_function.s3_public_access_checker.arn
+  target_id = "lambda-cleanup-iam-users"
+  arn       = aws_lambda_function.iam_user_cleanup.arn
 }
 
 resource "aws_lambda_permission" "allow_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.s3_public_access_checker.function_name
+  function_name = aws_lambda_function.iam_user_cleanup.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.every_day.arn
 }
