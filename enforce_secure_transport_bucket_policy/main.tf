@@ -4,28 +4,28 @@ provider "aws" {
 
 variable "region" {
   type    = string
-  default = "us-west-2"
+  default = "us-east-1"  # Updated to your specified region
 }
 
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "lambda_function.py" # Make sure this matches your Python file name
+  source_file = "lambda_function.py"  # Matches the Python file name
   output_path = "lambda_function.zip"
 }
 
-resource "aws_lambda_function" "s3_public_access_checker" {
+resource "aws_lambda_function" "s3_secure_transport_enforcer" {
   filename         = "lambda_function.zip"
-  function_name    = "s3-public-access-checker"
+  function_name    = "s3-secure-transport-enforcer"  # Updated name to reflect purpose
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.9"  # Updated to a more recent Python version
-  timeout          = 300         # Increased timeout to 5 minutes for processing multiple buckets
-  memory_size      = 128         # Default memory size
+  runtime          = "python3.9"
+  timeout          = 300  # 5 minutes, sufficient for moderate bucket counts
+  memory_size      = 128  # Default, adjust if needed
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 }
 
 resource "aws_iam_role" "lambda_role" {
-  name = "s3_checker_lambda_role"
+  name = "s3_enforcer_lambda_role"  # Updated name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -42,7 +42,7 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_policy" {
-  name = "s3_checker_lambda_policy"
+  name = "s3_enforcer_lambda_policy"  # Updated name
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
@@ -51,11 +51,10 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow"
         Action = [
-          "s3:ListAllMyBuckets",
-          "s3:GetBucketPublicAccessBlock",
-#          "s3:DeleteBucket",
-#          "s3:DeleteObject",
-          "s3:ListBucket"
+          "s3:ListAllMyBuckets",  # For listing buckets
+          "s3:GetBucketPolicy",   # To read policies
+          "s3:PutBucketPolicy",   # To update policies
+          "s3:ListBucket"         # Included from your original
         ]
         Resource = "*"
       },
@@ -66,7 +65,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = "arn:aws:logs:${var.region}:*:*"
       }
     ]
   })
@@ -74,20 +73,20 @@ resource "aws_iam_role_policy" "lambda_policy" {
 
 resource "aws_cloudwatch_event_rule" "every_day" {
   name                = "every-day-s3-check"
-  description         = "Runs S3 public access check every day at 2 AM UTC"
+  description         = "Runs S3 secure transport enforcement every day at 2 AM UTC"
   schedule_expression = "cron(0 2 * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "check_s3_buckets" {
   rule      = aws_cloudwatch_event_rule.every_day.name
-  target_id = "lambda-check-s3-buckets"
-  arn       = aws_lambda_function.s3_public_access_checker.arn
+  target_id = "lambda-enforce-s3-secure-transport"
+  arn       = aws_lambda_function.s3_secure_transport_enforcer.arn
 }
 
 resource "aws_lambda_permission" "allow_cloudwatch" {
   statement_id  = "AllowExecutionFromCloudWatch"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.s3_public_access_checker.function_name
+  function_name = aws_lambda_function.s3_secure_transport_enforcer.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.every_day.arn
 }
