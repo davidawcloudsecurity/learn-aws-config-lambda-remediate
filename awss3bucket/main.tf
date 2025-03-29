@@ -71,7 +71,7 @@ resource "aws_iam_role" "remediation_role" {
         Action    = "sts:AssumeRole"
         Effect    = "Allow"
         Principal = {
-          Service = "config.amazonaws.com"
+          Service = "ssm.amazonaws.com"
         }
       },
     ]
