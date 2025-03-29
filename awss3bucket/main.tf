@@ -9,6 +9,10 @@ variable "region" {
   default = "us-east-1" # Change to your preferred region
 }
 
+variable "conformance_pack_yaml" {
+  default = "Operational-Best-Practices-for-Amazon-S3.yaml"
+}
+
 resource "aws_s3_bucket" "config_bucket" {
   bucket = "aws-config-delivery-bucket"
   acl    = "private"
@@ -83,7 +87,7 @@ resource "aws_config_conformance_pack" "my_conformance_pack" {
 
   delivery_s3_bucket = aws_s3_bucket.config_bucket.bucket
 
-  template_body = file("conformance_pack.yaml")
+  template_body = file("${var.conformance_pack_yaml}")
 
   input_parameters = {
     BucketName = aws_s3_bucket.config_bucket.bucket
