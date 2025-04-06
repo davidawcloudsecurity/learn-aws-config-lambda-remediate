@@ -15,7 +15,7 @@ data "archive_file" "lambda_zip" {
 
 resource "aws_lambda_function" "sg_inbound_outbound_check_fix" {
   filename         = "lambda_function.zip"
-  function_name    = "sg-inbound-outbound-checker"
+  function_name    = "sg-inbound-outbound-check_fix"
   role             = aws_iam_role.lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.8"
