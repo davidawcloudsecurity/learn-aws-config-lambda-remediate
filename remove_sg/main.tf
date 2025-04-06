@@ -4,7 +4,7 @@ provider "aws" {
 
 variable region {
   type = string
-default = "us-west-2"
+default = "us-east-1"
 }
 
 data "archive_file" "lambda_zip" {
