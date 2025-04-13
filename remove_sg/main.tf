@@ -94,5 +94,5 @@ resource "aws_lambda_permission" "allow_config" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.sg_inbound_outbound_check_fix.function_name
   principal     = "config.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.every_day.arn
+  # source_arn    = aws_cloudwatch_event_rule.every_day.arn
 }
