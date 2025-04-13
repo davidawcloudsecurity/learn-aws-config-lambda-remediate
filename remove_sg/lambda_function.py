@@ -1,5 +1,7 @@
 import boto3
 
+# use vpc-sg-open-only-to-authorized-ports
+
 def lambda_handler(event, context):
     ec2 = boto3.client('ec2')
     errors = []
