@@ -1,6 +1,7 @@
 import boto3
 
 # use vpc-sg-open-only-to-authorized-ports
+# Remediation Lambda for removing overly permissive AWS security group rules (e.g., 0.0.0.0/0 with all traffic or ports)
 
 def lambda_handler(event, context):
     ec2 = boto3.client('ec2')
